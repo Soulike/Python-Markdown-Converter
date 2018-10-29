@@ -1,4 +1,3 @@
-import re
 from tech.soulike.mdconverter.MDConverter import MDConverter
 
 converter = MDConverter()

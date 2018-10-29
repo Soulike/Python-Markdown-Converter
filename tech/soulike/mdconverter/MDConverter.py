@@ -5,27 +5,38 @@ class MDConverter:
 
     def makeHtml(self, code):
 
-        result = code
-        # 处理代码
-        result = self.__convertCodeBlocks(result)
-        # 处理行内元素
-        result = self.__convertHeadings(result)
-        result = self.__convertInlines(CODE, result, '<code>')
-        result = self.__convertInlines(STRONG, result, '<strong>')
-        result = self.__convertInlines(ITALIC, result, '<i>')
-        # 处理链接和图片，注意这两个有顺序要求，必须先图片后链接
-        result = self.__convertImages(result)
-        result = self.__convertLinks(result)
+        codeParts = self.__splitToPlainAndCode(code)
+        processedCode = ''
 
-        result = self.__convertBlockquotes(result)
-        result = self.__convertLists(result)
-        return result
+        for codePart in codeParts:
+            if self.__isCodeBlock(codePart):
+                processedCode += self.__convertCodeBlocks(codePart)
+            else:
+                # 处理行内元素
+                codePart = self.__convertHeadings(codePart)
+                codePart = self.__convertInlines(CODE, codePart, '<code>')
+                codePart = self.__convertInlines(STRONG, codePart, '<strong>')
+                codePart = self.__convertInlines(ITALIC, codePart, '<i>')
+                # 处理链接和图片，注意这两个有顺序要求，必须先图片后链接
+                codePart = self.__convertImages(codePart)
+                codePart = self.__convertLinks(codePart)
+
+                codePart = self.__convertBlockquotes(codePart)
+                codePart = self.__convertLists(codePart)
+
+                # codePart = self.__convertInlines(PLAIN_TEXT, codePart, '<p>')
+
+                processedCode += codePart
+
+        return processedCode
+
+    # 转换函数部分
 
     def __convertHeadings(self, code):
         results = HEADING.search(code)
         while results is not None:
             level = len(results.group(1))
-            convertedStr = '<h{0}>{1}</h{2}>\n'.format(level, results.group(2), level)
+            convertedStr = '\n<h{0}>{1}</h{2}>\n'.format(level, results.group(2), level)
             code = re.sub(HEADING, convertedStr, code, 1)
             results = HEADING.search(code)
         return code
@@ -42,7 +53,7 @@ class MDConverter:
         regex = IMAGE
         results = regex.search(code)
         while results is not None:
-            convertedStr = '<img src="{1}" alt="{0}" />'.format(results.group(1), results.group(2))
+            convertedStr = '\n<img src="{1}" alt="{0}" />\n'.format(results.group(1), results.group(2))
             code = re.sub(regex, convertedStr, code, 1)
             results = regex.search(code)
         return code
@@ -69,7 +80,7 @@ class MDConverter:
             blockquoteSearchResultInPart = partRegex.search(partCode)  # 找到一个引用行
             lastBlockquoteLevel = 0  # 上一次处理的引用行的级别，用于计算嵌套引用
             maxBlockquoteLevel = -1  # 最大引用行级别，用于在最后补充闭合标签
-            convertedStr = '<blockquote><p>'
+            convertedStr = '\n<blockquote><p>'
 
             while blockquoteSearchResultInPart is not None:
                 currentBlockQuoteLevel = len(blockquoteSearchResultInPart.group(2))
@@ -79,21 +90,21 @@ class MDConverter:
                 lastBlockquoteLevel = currentBlockQuoteLevel
 
                 if blockquoteLevelDiff > 0:
-                    convertedStr += '</p>'
+                    convertedStr += '</p>\n'
                 if blockquoteLevelDiff < 0:
                     blockquoteLevelDiff = 0
 
                 blockquoteContent = blockquoteSearchResultInPart.group(3)
 
-                convertedStr += '<blockquote>' * blockquoteLevelDiff + '<p>' * (blockquoteLevelDiff % 2) + \
+                convertedStr += '\n<blockquote>' * blockquoteLevelDiff + '<p>' * (blockquoteLevelDiff % 2) + \
                                 blockquoteContent
                 partCode = re.sub(partRegex, convertedStr, partCode, 1)
                 convertedStr = ''
                 blockquoteSearchResultInPart = partRegex.search(partCode)  # 再次查找在这个代码块里面还有没有块引用
 
             # 补充闭合标签
-            partCode += '</p></blockquote>'
-            partCode += '</blockquote>' * maxBlockquoteLevel
+            partCode += '</p>\n</blockquote>\n'
+            partCode += '</blockquote>\n' * maxBlockquoteLevel
 
             code = re.sub(originalPartCode, partCode, code, 1)
 
@@ -114,13 +125,13 @@ class MDConverter:
 
             closeTagStack = []
 
-            if self.__isOrderedList(partCode) is True:
-                convertedStr = '<ol>'
-                closeTagStack.append('</ol>')
+            if self.__isOrderedListItem(partCode) is True:
+                convertedStr = '<ol>\n'
+                closeTagStack.append('</ol>\n')
                 isOrderedItem = True
             else:
-                convertedStr = '<ul>'
-                closeTagStack.append('</ul>')
+                convertedStr = '<ul>\n'
+                closeTagStack.append('</ul>\n')
                 isOrderedItem = False
 
             while partSearchResult is not None:
@@ -135,29 +146,29 @@ class MDConverter:
                     for i in range(2 * (-listLevelDiff)):
                         convertedStr += closeTagStack.pop()
                 elif listLevelDiff > 0:
-                    if self.__isOrderedList(partSearchResult.group(0)) is True:
-                        convertedStr += '<ol>'
-                        closeTagStack.append('</ol>')
+                    if self.__isOrderedListItem(partSearchResult.group(0)) is True:
+                        convertedStr += '<ol>\n'
+                        closeTagStack.append('</ol>\n')
                         isOrderedItem = True
                     else:
-                        convertedStr += '<ul>'
-                        closeTagStack.append('</ul>')
+                        convertedStr += '<ul>\n'
+                        closeTagStack.append('</ul>\n')
                         isOrderedItem = False
                 elif len(closeTagStack) is not 1:
                     convertedStr += closeTagStack.pop()
 
-                    if self.__isOrderedList(partSearchResult.group(0)) is not isOrderedItem:
+                    if self.__isOrderedListItem(partSearchResult.group(0)) is not isOrderedItem:
                         isOrderedItem = not isOrderedItem
                         convertedStr += closeTagStack.pop()
                         if isOrderedItem is True:
-                            convertedStr += '<ol>'
-                            closeTagStack.append('</ol>')
+                            convertedStr += '<ol>\n'
+                            closeTagStack.append('</ol>\n')
                         else:
-                            convertedStr += '<ul>'
-                            closeTagStack.append('</ul>')
+                            convertedStr += '<ul>\n'
+                            closeTagStack.append('</ul>\n')
 
                 convertedStr += '<li>' + listContent
-                closeTagStack.append('</li>')
+                closeTagStack.append('</li>\n')
                 partCode = re.sub(partRegex, convertedStr, partCode, 1)
                 convertedStr = ''
                 partSearchResult = partRegex.search(partCode)
@@ -168,19 +179,40 @@ class MDConverter:
             listPartSearchResult = regex.search(code, nextSearchStartIndex)
         return code
 
-    def __isOrderedList(self, listItem):
+    def __convertCodeBlocks(self, code):
+        regex = CODE_BLOCK
+        results = regex.search(code)
+        while results is not None:
+            convertedStr = '\n<pre><code class="{0} language-{0}">{1}</code></pre>\n'.format(results.group(1),
+                                                                                             results.group(2))
+            code = re.sub(regex, convertedStr, code, 1)
+            results = regex.search(code)
+        return code
+
+    # 工具函数部分
+
+    # 判定一个列表项是否是ol项，返回值是布尔值
+    def __isOrderedListItem(self, listItem):
         typeSearchResult = LIST_ITEM_TYPE.search(listItem)
         if typeSearchResult.group(2) is not None and typeSearchResult.group(2).isdigit():
             return True
         else:
             return False
 
-    def __convertCodeBlocks(self, code):
-        regex = CODE_BLOCK
-        results = regex.search(code)
-        while results is not None:
-            convertedStr = '<pre><code class="{0} language-{0}">{1}</code></pre>'.format(results.group(1),
-                                                                                         results.group(2))
-            code = re.sub(regex, convertedStr, code, 1)
-            results = regex.search(code)
-        return code
+    # 将整个代码以代码块为分隔分割为多个部分，返回一个列表，其中按顺序放置各个代码块
+    def __splitToPlainAndCode(self, code):
+        codeBlocks = []
+        lastCodeBlockEnd = 0  # 上一个代码块的结束位置
+        codeBlockSearchResults = CODE_BLOCK.finditer(code)
+        for match in codeBlockSearchResults:
+            start = match.start()
+            end = match.end()
+            codeBlocks.append(code[lastCodeBlockEnd:start])
+            codeBlocks.append(code[start:end])
+            lastCodeBlockEnd = end
+        codeBlocks.append(code[lastCodeBlockEnd:])
+        return codeBlocks
+
+    # 判定一个块是否是代码块
+    def __isCodeBlock(self, code):
+        return CODE_BLOCK.search(code) is not None
