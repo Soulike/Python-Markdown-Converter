@@ -24,7 +24,8 @@ class MDConverter:
                 codePart = self.__convertBlockquotes(codePart)
                 codePart = self.__convertLists(codePart)
 
-                # codePart = self.__convertInlines(PLAIN_TEXT, codePart, '<p>')
+                # 转换自然段的必须在最后
+                codePart = self.__convertParagraphs(codePart)
 
                 processedCode += codePart
 
@@ -36,7 +37,7 @@ class MDConverter:
         results = HEADING.search(code)
         while results is not None:
             level = len(results.group(1))
-            convertedStr = '\n<h{0}>{1}</h{2}>\n'.format(level, results.group(2), level)
+            convertedStr = '<h{0}>{1}</h{2}>'.format(level, results.group(2), level)
             code = re.sub(HEADING, convertedStr, code, 1)
             results = HEADING.search(code)
         return code
@@ -49,11 +50,27 @@ class MDConverter:
             results = regex.search(code)
         return code
 
+    def __convertParagraphs(self, code):
+        results = PLAIN_TEXT.search(code)
+        searchGroup = None
+        searchedLength = 0
+        while results is not None:
+            for i in range(1, 4):
+                if results.group(i) is not None:
+                    searchGroup = results.group(i)
+                    break
+            if searchGroup is not None and NOT_PLAIN_TEXT.search(searchGroup) is None:
+                convertedStr = '<p>{0}</p>'.format(searchGroup)
+                code = code[:results.start()] + convertedStr + code[results.end():]
+            searchedLength += len(searchGroup)
+            results = PLAIN_TEXT.search(code, searchedLength)
+        return code
+
     def __convertImages(self, code):
         regex = IMAGE
         results = regex.search(code)
         while results is not None:
-            convertedStr = '\n<img src="{1}" alt="{0}" />\n'.format(results.group(1), results.group(2))
+            convertedStr = '<img src="{1}" alt="{0}" />'.format(results.group(1), results.group(2))
             code = re.sub(regex, convertedStr, code, 1)
             results = regex.search(code)
         return code
@@ -80,7 +97,7 @@ class MDConverter:
             blockquoteSearchResultInPart = partRegex.search(partCode)  # 找到一个引用行
             lastBlockquoteLevel = 0  # 上一次处理的引用行的级别，用于计算嵌套引用
             maxBlockquoteLevel = -1  # 最大引用行级别，用于在最后补充闭合标签
-            convertedStr = '\n<blockquote><p>'
+            convertedStr = '<blockquote><p>'
 
             while blockquoteSearchResultInPart is not None:
                 currentBlockQuoteLevel = len(blockquoteSearchResultInPart.group(2))
@@ -90,21 +107,21 @@ class MDConverter:
                 lastBlockquoteLevel = currentBlockQuoteLevel
 
                 if blockquoteLevelDiff > 0:
-                    convertedStr += '</p>\n'
+                    convertedStr += '</p>'
                 if blockquoteLevelDiff < 0:
                     blockquoteLevelDiff = 0
 
                 blockquoteContent = blockquoteSearchResultInPart.group(3)
 
-                convertedStr += '\n<blockquote>' * blockquoteLevelDiff + '<p>' * (blockquoteLevelDiff % 2) + \
+                convertedStr += '<blockquote>' * blockquoteLevelDiff + '<p>' * (blockquoteLevelDiff % 2) + \
                                 blockquoteContent
                 partCode = re.sub(partRegex, convertedStr, partCode, 1)
                 convertedStr = ''
                 blockquoteSearchResultInPart = partRegex.search(partCode)  # 再次查找在这个代码块里面还有没有块引用
 
             # 补充闭合标签
-            partCode += '</p>\n</blockquote>\n'
-            partCode += '</blockquote>\n' * maxBlockquoteLevel
+            partCode += '</p></blockquote>'
+            partCode += '</blockquote>' * maxBlockquoteLevel
 
             code = re.sub(originalPartCode, partCode, code, 1)
 
@@ -126,12 +143,12 @@ class MDConverter:
             closeTagStack = []
 
             if self.__isOrderedListItem(partCode) is True:
-                convertedStr = '<ol>\n'
-                closeTagStack.append('</ol>\n')
+                convertedStr = '<ol>'
+                closeTagStack.append('</ol>')
                 isOrderedItem = True
             else:
-                convertedStr = '<ul>\n'
-                closeTagStack.append('</ul>\n')
+                convertedStr = '<ul>'
+                closeTagStack.append('</ul>')
                 isOrderedItem = False
 
             while partSearchResult is not None:
@@ -147,12 +164,12 @@ class MDConverter:
                         convertedStr += closeTagStack.pop()
                 elif listLevelDiff > 0:
                     if self.__isOrderedListItem(partSearchResult.group(0)) is True:
-                        convertedStr += '<ol>\n'
-                        closeTagStack.append('</ol>\n')
+                        convertedStr += '<ol>'
+                        closeTagStack.append('</ol>')
                         isOrderedItem = True
                     else:
-                        convertedStr += '<ul>\n'
-                        closeTagStack.append('</ul>\n')
+                        convertedStr += '<ul>'
+                        closeTagStack.append('</ul>')
                         isOrderedItem = False
                 elif len(closeTagStack) is not 1:
                     convertedStr += closeTagStack.pop()
@@ -161,14 +178,14 @@ class MDConverter:
                         isOrderedItem = not isOrderedItem
                         convertedStr += closeTagStack.pop()
                         if isOrderedItem is True:
-                            convertedStr += '<ol>\n'
-                            closeTagStack.append('</ol>\n')
+                            convertedStr += '<ol>'
+                            closeTagStack.append('</ol>')
                         else:
-                            convertedStr += '<ul>\n'
-                            closeTagStack.append('</ul>\n')
+                            convertedStr += '<ul>'
+                            closeTagStack.append('</ul>')
 
                 convertedStr += '<li>' + listContent
-                closeTagStack.append('</li>\n')
+                closeTagStack.append('</li>')
                 partCode = re.sub(partRegex, convertedStr, partCode, 1)
                 convertedStr = ''
                 partSearchResult = partRegex.search(partCode)
@@ -183,8 +200,8 @@ class MDConverter:
         regex = CODE_BLOCK
         results = regex.search(code)
         while results is not None:
-            convertedStr = '\n<pre><code class="{0} language-{0}">{1}</code></pre>\n'.format(results.group(1),
-                                                                                             results.group(2))
+            convertedStr = '<pre><code class="{0} language-{0}">{1}</code></pre>'.format(results.group(1),
+                                                                                         results.group(2))
             code = re.sub(regex, convertedStr, code, 1)
             results = regex.search(code)
         return code

@@ -1,14 +1,14 @@
 import re
 
 # 行内元素
-HEADING = re.compile('^(#+) (.*)[\r\n]*', re.MULTILINE)
-CODE = re.compile('`([^`\r\n]+)`')
-STRONG = re.compile('\*\*(.+)\*\*')
-ITALIC = re.compile('\*(.+)\*')
+HEADING = re.compile('^(#+) (.*)(?:\r?\n)+', re.MULTILINE)
+CODE = re.compile('`([^`\r\n]+)(?:\r?\n)*`')
+STRONG = re.compile('(?:\r?\n)*\*{2}(.+)\*{2}(?:\r?\n)*')
+ITALIC = re.compile('(?:\r?\n)*\*(.+)\*(?:\r?\n)*')
 
 # 图片与链接
-IMAGE = re.compile('!\[(.+)\]\((.+)\)')
-LINK = re.compile('\[(.+)\]\((.+)\)')
+IMAGE = re.compile('(?:\r?\n)*!\[(.+)\]\((.+)\)(?:\r?\n)*')
+LINK = re.compile('(?:\r?\n)*\[(.+)\]\((.+)\)(?:\r?\n)*')
 
 # 引用
 # 用于判定引用块
@@ -29,9 +29,6 @@ LIST_ITEM_TYPE = re.compile('\s*((\d+)\.|[\-*+]) .*')
 CODE_BLOCK = re.compile('^```(\w+)?\r?\n(.+)```$', re.DOTALL | re.MULTILINE)
 
 # 普通文本
-# 在文件起始的普通文本
-PLAIN_TEXT_START = re.compile('^{.+}')
-# 在文件结尾的普通文本
-PLAIN_TEXT_END = re.compile('')
-# 在标签之间的普通文本
-PLAIN_TEXT_MID = re.compile('')
+PLAIN_TEXT = re.compile('(?:^(\S*\s?\S+)\s{2,})|(?:\s{2,}(\S*\s?\S+)$)', re.MULTILINE)
+
+NOT_PLAIN_TEXT = re.compile('\s*</?[\w\s-]+/?>\s*')
