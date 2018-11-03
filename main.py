@@ -1,4 +1,4 @@
-from tech.soulike.mdconverter.MDConverter import MDConverter
+from MDConverter import MDConverter
 
 converter = MDConverter()
 

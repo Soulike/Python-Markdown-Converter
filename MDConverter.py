@@ -1,5 +1,5 @@
 import cgi
-from tech.soulike.mdconverter.regex import *
+from regex import *
 
 
 class MDConverter:
