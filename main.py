@@ -1,4 +1,4 @@
-from MDConverter import MDConverter
+from .MDConverter import MDConverter
 
 converter = MDConverter()
 

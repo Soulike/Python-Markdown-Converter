@@ -1,5 +1,6 @@
 import cgi
-from regex import *
+
+from .regex import *
 
 
 class MDConverter:
@@ -35,7 +36,6 @@ class MDConverter:
                     plainOrCodePart += plainPart
 
             processedCode += plainOrCodePart
-            print(plainOrCodePart)
 
         return processedCode
 
