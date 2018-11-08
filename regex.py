@@ -31,6 +31,6 @@ LIST_ITEM_TYPE = re.compile('\s*((\d+)\.|[\-*+]) .*')
 CODE_BLOCK = re.compile('^```(\w+)?\r?\n(.+?)```$', re.DOTALL | re.MULTILINE)
 
 # 普通文本
-PLAIN_TEXT = re.compile('(?:^(\S*\s?\S+)\s{2,})|(?:\s{2,}(\S*\s?\S+)$)', re.MULTILINE)
+PLAIN_TEXT = re.compile('^(.+)$', re.DOTALL)
 
 NOT_PLAIN_TEXT = re.compile('\s*</?[\w\s-]+/?>\s*')
